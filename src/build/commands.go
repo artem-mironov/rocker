@@ -1288,7 +1288,7 @@ func (c *CommandArg) Execute(b *Build) (s State, err error) {
 	// b.buildArgs if one is not already passed to the builder. The args passed
 	// to builder override the default value of 'arg'.
 	if _, ok := s.NoCache.BuildArgs[name]; !ok && hasDefault {
-		s.NoCache.BuildArgs[name] = value
+		s.NoCache.BuildArgs[name] = util.ReplaceVars(s.NoCache.BuildArgs, value)
 	}
 
 	s.Commit("ARG %s", arg)

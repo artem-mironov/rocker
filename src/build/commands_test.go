@@ -832,4 +832,48 @@ func TestCommandArg_Allow(t *testing.T) {
 	assert.Equal(t, "ARG xxx", state.GetCommits())
 }
 
+func TestCommandArg_Substitution(t *testing.T) {
+	b, _ := makeBuild(t, "", Config{})
+	cmd := NewCommand(ConfigCommand{
+		name: "arg",
+		args: []string{"arg1=arg1val"},
+	})
+
+	state, err := cmd.Execute(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, true, b.allowedBuildArgs["arg1"])
+	assert.Equal(t, "arg1val", state.NoCache.BuildArgs["arg1"])
+	assert.Equal(t, "ARG arg1=arg1val", state.GetCommits())
+
+	cmd = NewCommand(ConfigCommand{
+		name: "arg",
+		args: []string{"arg2=arg2val"},
+	})
+
+	state, err = cmd.Execute(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, true, b.allowedBuildArgs["arg2"])
+	assert.Equal(t, "arg2val", state.NoCache.BuildArgs["arg2"])
+	assert.Equal(t, "ARG arg2=arg2val", state.GetCommits())
+
+	cmd = NewCommand(ConfigCommand{
+		name: "arg",
+		args: []string{"argcompose=start$arg1 middle${arg2}end"},
+	})
+
+	state, err = cmd.Execute(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, true, b.allowedBuildArgs["argcompose"])
+	assert.Equal(t, "startarg1val middlearg2valend", state.NoCache.BuildArgs["argcompose"])
+}
+
 // TODO: test Cleanup
