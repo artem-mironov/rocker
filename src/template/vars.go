@@ -37,21 +37,80 @@ import (
 // Vars describes the data structure of the build variables
 type Vars map[string]interface{}
 
+// Convert map with interface{} key to map with string key if possible
+func fixMap(m map[interface{}]interface{}) map[string]interface{} {
+	res := make(map[string]interface{})
+
+	for k, v := range m {
+		res[k.(string)] = v
+	}
+	return res
+}
+
+func deepMergeMaps(x1, x2 map[string]interface{}) map[string]interface{} {
+	for k, v2 := range x2 {
+		if v1, ok := x1[k]; ok {
+			x1[k] = deepMerge(v1, v2)
+		} else {
+			x1[k] = v2
+		}
+	}
+	return x1
+}
+
+// Deep merge two values
+// Going deep only if values are maps
+func deepMerge(x1, x2 interface{}) interface{} {
+	if x1 == nil {
+		return x2
+	} else if x2 == nil {
+		return x1
+	}
+
+	rv1 := reflect.ValueOf(x1)
+	rv2 := reflect.ValueOf(x2)
+
+	// We want to merge slices of the same type by appending them to each other
+	// instead of overwriting
+	if rv1.Kind() == reflect.Slice && rv2.Kind() == reflect.Slice && rv1.Type() == rv2.Type() {
+		return reflect.AppendSlice(rv1, rv2).Interface()
+	} else if rv2.Kind() == reflect.Map {
+		var sm1,sm2 map[string]interface{}
+		if rv1.Type() != rv2.Type() {
+			log.Fatal("Incompatible map types, can't merge")
+		}
+
+		switch x2:= x2.(type) {
+		case Vars:
+			sm2 = x2
+		case map[string]interface{}:
+			sm2 = x2
+		case map[interface{}]interface{}:
+			sm2 = fixMap(x2)
+		default:
+			log.Fatalf("Unsupported map type: %T", x2)
+		}
+
+		switch x1:= x1.(type) {
+		case Vars:
+			sm1 = x1
+		case map[string]interface{}:
+			sm1 = x1
+		case map[interface{}]interface{}:
+			sm1 = fixMap(x1)
+		default:
+			log.Fatalf("Unsupported map type: %T", x1)
+		}
+		return deepMergeMaps(sm1, sm2)
+	} else {
+		return x2
+	}
+}
+
 // Merge the current Vars structure with the list of other Vars structs
 func (vars Vars) Merge(varsList ...Vars) Vars {
 	for _, mergeWith := range varsList {
-		for k, v := range mergeWith {
-			// We want to merge slices of the same type by appending them to each other
-			// instead of overwriting
-			rv1 := reflect.ValueOf(vars[k])
-			rv2 := reflect.ValueOf(v)
-
-			if rv1.Kind() == reflect.Slice && rv2.Kind() == reflect.Slice && rv1.Type() == rv2.Type() {
-				vars[k] = reflect.AppendSlice(rv1, rv2).Interface()
-			} else {
-				vars[k] = v
-			}
-		}
+		deepMerge(vars, mergeWith)
 	}
 	return vars
 }
