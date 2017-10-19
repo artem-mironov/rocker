@@ -299,9 +299,15 @@ func (b *Build) getVolumeContainer(path string) (c *docker.Container, err error)
 		},
 	}
 
+	hostConfig := &docker.HostConfig{
+		CPUQuota:  400000,
+		CPUPeriod: 0,
+		Memory:    10737418240, // 10GB
+	}
+
 	log.Debugf("Make MOUNT volume container %s with options %# v", name, config)
 
-	if _, err = b.client.EnsureContainer(name, config, nil, path); err != nil {
+	if _, err = b.client.EnsureContainer(name, config, hostConfig, path); err != nil {
 		return nil, err
 	}
 

@@ -438,7 +438,6 @@ func (c *DockerClient) RemoveContainer(containerID string) error {
 
 	opts := docker.RemoveContainerOptions{
 		ID:            containerID,
-		Force:         true,
 		RemoveVolumes: true,
 	}
 
